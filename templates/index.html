@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="noir">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SADTALKER // AI Lip-Sync Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Oswald:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        /* =========================================================
+           1. ПАЛИТРА: ЧЕРНЫЙ СЕРЬЕЗНЫЙ (OBSIDIAN NOIR — ПО УМОЛЧАНИЮ)
+           Вдохновлено референсами: угольный, теплый беж, хром, сетка
+           ========================================================= */
+        :root, [data-theme="noir"] {
+            --bg-main: #09090b;
+            --bg-grid: rgba(244, 241, 234, 0.035);
+            --surface: #111114;
+            --surface-elevated: #18181c;
+            --border: rgba(244, 241, 234, 0.14);
+            --border-strong: rgba(244, 241, 234, 0.32);
+            --text-primary: #f4f1ea;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            --accent: #f4f1ea;
+            --accent-text: #09090b;
+            --accent-secondary: #dc2626;
+            --btn-gradient: linear-gradient(135deg, #f4f1ea 0%, #d6d3cb 100%);
+            --btn-shadow: 0 8px 25px rgba(244, 241, 234, 0.12);
+            --glow-orb-1: rgba(244, 241, 234, 0.04);
+            --glow-orb-2: rgba(220, 38, 38, 0.05);
+            --radius-card: 6px;
+            --radius-btn: 4px;
+        }
+
+        /* =========================================================
+           2. ПАЛИТРА: РОЗОВО-ФИОЛЕТОВЫЙ СТИЛЬ (CYBER ROSE / VIOLET)
+           ========================================================= */
+        [data-theme="violet"] {
+            --bg-main: #0c0614;
+            --bg-grid: rgba(236, 72, 153, 0.055);
+            --surface: rgba(24, 12, 38, 0.78);
+            --surface-elevated: rgba(36, 18, 56, 0.85);
+            --border: rgba(236, 72, 153, 0.24);
+            --border-strong: rgba(192, 132, 252, 0.5);
+            --text-primary: #fdf4ff;
+            --text-secondary: #d8b4fe;
+            --text-muted: #9333ea;
+            --accent: #ec4899;
+            --accent-text: #ffffff;
+            --accent-secondary: #a855f7;
+            --btn-gradient: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+            --btn-shadow: 0 10px 30px rgba(236, 72, 153, 0.35);
+            --glow-orb-1: rgba(236, 72, 153, 0.18);
+            --glow-orb-2: rgba(139, 92, 246, 0.22);
+            --radius-card: 16px;
+            --radius-btn: 12px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            position: relative;
+            overflow-x: hidden;
+            transition: background-color 0.4s ease, color 0.4s ease;
+            /* Архитектурная сетка на фоне (в стиле журнального референса) */
+            background-image:
+                linear-gradient(to right, var(--bg-grid) 1px, transparent 1px),
+                linear-gradient(to bottom, var(--bg-grid) 1px, transparent 1px);
+            background-size: 48px 48px;
+        }
+
+        /* Мягкие световые пятна на фоне */
+        .ambient-orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(110px);
+            pointer-events: none;
+            z-index: 0;
+            transition: background 0.5s ease;
+        }
+        .orb-1 {
+            width: 420px;
+            height: 420px;
+            top: -120px;
+            left: -100px;
+            background: var(--glow-orb-1);
+        }
+        .orb-2 {
+            width: 460px;
+            height: 460px;
+            bottom: -140px;
+            right: -100px;
+            background: var(--glow-orb-2);
+        }
+
+        .app-shell {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 1060px;
+        }
+
+        /* Верхняя панель в стиле брендбука */
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+            padding-bottom: 18px;
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .brand-block {
+            display: flex;
+            align-items: baseline;
+            gap: 14px;
+        }
+
+        .brand-title {
+            font-family: 'Oswald', sans-serif;
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            line-height: 1;
+            color: var(--text-primary);
+        }
+
+        .brand-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 4px 8px;
+            border: 1px solid var(--border-strong);
+            border-radius: 3px;
+            color: var(--text-secondary);
+        }
+
+        /* Переключатель тем (Черный / Розово-фиолетовый) */
+        .theme-switcher {
+            display: inline-flex;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-btn);
+            padding: 4px;
+            gap: 4px;
+        }
+
+        .theme-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 7px 12px;
+            border-radius: calc(var(--radius-btn) - 2px);
+            cursor: pointer;
+            transition: all 0.25s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .theme-btn.active {
+            background: var(--btn-gradient);
+            color: var(--accent-text);
+            font-weight: 600;
+        }
+
+        .dot-noir { width: 8px; height: 8px; border-radius: 50%; background: #18181b; border: 1px solid #a1a1aa; }
+        .dot-violet { width: 8px; height: 8px; border-radius: 50%; background: linear-gradient(135deg, #ec4899, #8b5cf6); }
+
+        /* Основная двухколоночная сетка */
+        .workspace-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            align-items: stretch;
+        }
+
+        @media (max-width: 840px) {
+            .workspace-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-card);
+            padding: 26px;
+            backdrop-filter: blur(16px);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: all 0.35s ease;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+            padding-bottom: 10px;
+            border-bottom: 1px dashed var(--border);
+        }
+
+        .panel-step {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-secondary);
+        }
+
+        .panel-index {
+            font-family: 'Oswald', sans-serif;
+            font-size: 14px;
+            color: var(--accent);
+            letter-spacing: 0.06em;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            letter-spacing: 0.01em;
+        }
+
+        /* Кастомная зона загрузки фото с превью */
+        .upload-zone {
+            position: relative;
+            border: 1px dashed var(--border-strong);
+            background: var(--surface-elevated);
+            border-radius: var(--radius-btn);
+            padding: 18px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            min-height: 150px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .upload-zone:hover {
+            border-color: var(--accent);
+            transform: translateY(-1px);
+        }
+
+        .upload-zone input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+        }
+
+        .upload-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .upload-icon {
+            width: 36px;
+            height: 36px;
+            border: 1px solid var(--border-strong);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: var(--text-primary);
+        }
+
+        .image-preview-wrap {
+            display: none;
+            width: 100%;
+            align-items: center;
+            gap: 14px;
+            text-align: left;
+        }
+
+        .image-preview-wrap img {
+            width: 84px;
+            height: 84px;
+            object-fit: cover;
+            border-radius: calc(var(--radius-btn) - 1px);
+            border: 1px solid var(--border-strong);
+            flex-shrink: 0;
+        }
+
+        .file-meta {
+            overflow: hidden;
+        }
+
+        .file-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 4px;
+        }
+
+        .file-hint {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        /* Поле ввода текста */
+        textarea {
+            width: 100%;
+            min-height: 118px;
+            padding: 14px;
+            background: var(--surface-elevated);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-btn);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            line-height: 1.5;
+            resize: vertical;
+            transition: border-color 0.25s ease, box-shadow 0.25s ease;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        .char-counter {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        /* Главная кнопка генерации */
+        .submit-btn {
+            width: 100%;
+            padding: 15px 20px;
+            border: none;
+            border-radius: var(--radius-btn);
+            background: var(--btn-gradient);
+            color: var(--accent-text);
+            font-family: 'Oswald', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            cursor: pointer;
+            box-shadow: var(--btn-shadow);
+            transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .submit-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            opacity: 0.94;
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Правая панель — Монитор вывода видео */
+        .monitor-stage {
+            flex: 1;
+            background: var(--surface-elevated);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-btn);
+            min-height: 310px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .idle-state {
+            text-align: center;
+            max-width: 280px;
+        }
+
+        .idle-crosshair {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 22px;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+            letter-spacing: 0.2em;
+        }
+
+        .idle-text {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Анимация загрузки во время работы нейросети */
+        .loader-state {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 14px;
+        }
+
+        .spinner-ring {
+            width: 44px;
+            height: 44px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Блок готового видео (сохранены id="resultBox" и id="outputVideo" для совместимости) */
+        .result-box {
+            display: none;
+            width: 100%;
+            animation: fadeIn 0.45s ease;
+        }
+
+        video {
+            width: 100%;
+            max-height: 360px;
+            border-radius: calc(var(--radius-btn) - 1px);
+            background: #000;
+            display: block;
+            border: 1px solid var(--border-strong);
+        }
+
+        .result-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+            gap: 10px;
+        }
+
+        .download-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-btn);
+            color: var(--text-primary);
+            text-decoration: none;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            transition: all 0.2s ease;
+        }
+
+        .download-link:hover {
+            background: var(--accent);
+            color: var(--accent-text);
+        }
+
+        /* Строка системного статуса / ошибок */
+        .status-bar {
+            margin-top: 14px;
+            padding: 10px 12px;
+            border-radius: var(--radius-btn);
+            background: var(--surface-elevated);
+            border: 1px solid var(--border);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            line-height: 1.45;
+            color: var(--text-secondary);
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            word-break: break-word;
+            white-space: pre-wrap;
+        }
+
+        .status-bar.error {
+            border-color: #ef4444;
+            color: #fca5a5;
+            background: rgba(127, 29, 29, 0.22);
+        }
+
+        .status-bar.success {
+            border-color: var(--accent);
+            color: var(--text-primary);
+        }
+
+        .footer-meta {
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-between;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="ambient-orb orb-1"></div>
+<div class="ambient-orb orb-2"></div>
+
+<div class="app-shell">
+    <header class="top-bar">
+        <div class="brand-block">
+            <h1 class="brand-title">Оживление Фото по Тексту</h1>
+            <span class="brand-tag">SadTalker AI // v1.1</span>
+        </div>
+
+        <!-- Переключатель двух стилей -->
+        <div class="theme-switcher" role="group" aria-label="Выбор стиля оформления">
+            <button type="button" class="theme-btn active" id="btnNoir" onclick="setTheme('noir')">
+                <span class="dot-noir"></span> Noir Black
+            </button>
+            <button type="button" class="theme-btn" id="btnViolet" onclick="setTheme('violet')">
+                <span class="dot-violet"></span> Cyber Rose
+            </button>
+        </div>
+    </header>
+
+    <main class="workspace-grid">
+        <!-- ЛЕВАЯ КОЛОНКА: Входные данные -->
+        <section class="panel">
+            <div>
+                <div class="panel-header">
+                    <span class="panel-step">Параметры генерации</span>
+                    <span class="panel-index">[01 / INPUT]</span>
+                </div>
+
+                <form id="animationForm">
+                    <div class="form-group">
+                        <label for="image">
+                            <span>Портретное изображение</span>
+                            <span class="char-counter">JPG / PNG / WEBP</span>
+                        </label>
+
+                        <div class="upload-zone" id="uploadZone">
+                            <input type="file" id="image" accept="image/*" required>
+
+                            <div class="upload-placeholder" id="uploadPlaceholder">
+                                <div class="upload-icon">+</div>
+                                <span>Нажмите или перетащите фото лица</span>
+                            </div>
+
+                            <div class="image-preview-wrap" id="imagePreviewWrap">
+                                <img id="previewImg" src="" alt="Предпросмотр">
+                                <div class="file-meta">
+                                    <div class="file-name" id="fileNameDisplay">photo.jpg</div>
+                                    <div class="file-hint">Нажмите, чтобы заменить кадр</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="text">
+                            <span>Текст для синтеза речи (RU)</span>
+                            <span class="char-counter" id="charCount">0 симв.</span>
+                        </label>
+                        <textarea id="text" placeholder="Введите фразу, которую произнесет персонаж..." required></textarea>
+                    </div>
+
+                    <button type="submit" class="submit-btn" id="submitBtn">Сгенерировать видео</button>
+                </form>
+            </div>
+
+            <div class="status-bar" id="statusText">Система готова к запуску. Загрузите фото и введите текст.</div>
+        </section>
+
+        <!-- ПРАВАЯ КОЛОНКА: Монитор результата -->
+        <section class="panel">
+            <div class="panel-header">
+                <span class="panel-step">Монитор результата</span>
+                <span class="panel-index">[02 / OUTPUT]</span>
+            </div>
+
+            <div class="monitor-stage">
+                <!-- Состояние ожидания -->
+                <div class="idle-state" id="idleState">
+                    <div class="idle-crosshair">+ — +</div>
+                    <p class="idle-text">Здесь появится готовый видеоролик с синхронизацией губ после обработки нейросетью.</p>
+                </div>
+
+                <!-- Состояние рендеринга -->
+                <div class="loader-state" id="loaderState">
+                    <div class="spinner-ring"></div>
+                    <p class="idle-text">Синтез голоса и расчет 3D-мимики лица...<br>Пожалуйста, не закрывайте вкладку.</p>
+                </div>
+
+                <!-- Готовое видео -->
+                <div class="result-box" id="resultBox">
+                    <video id="outputVideo" controls playsinline></video>
+                    <div class="result-actions">
+                        <span class="file-hint">H.264 / MP4 // READY</span>
+                        <a id="downloadBtn" class="download-link" href="#" download="animated_face.mp4">↓ Скачать MP4</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer-meta">
+        <span>LOCAL ML ENGINE: FLASK + PYTORCH + FFMPEG</span>
+        <span>RESOLUTION: 512×512 // LIP-SYNC</span>
+    </footer>
+</div>
+
+<script>
+    // Переключение тем с сохранением выбора в браузере
+    function setTheme(themeName) {
+        document.documentElement.setAttribute('data-theme', themeName);
+        localStorage.setItem('ui_theme', themeName);
+        document.getElementById('btnNoir').classList.toggle('active', themeName === 'noir');
+        document.getElementById('btnViolet').classList.toggle('active', themeName === 'violet');
+    }
+
+    const savedTheme = localStorage.getItem('ui_theme') || 'noir';
+    setTheme(savedTheme);
+
+    // Живой предпросмотр загруженной фотографии
+    const imageInputEl = document.getElementById('image');
+    const uploadPlaceholder = document.getElementById('uploadPlaceholder');
+    const imagePreviewWrap = document.getElementById('imagePreviewWrap');
+    const previewImg = document.getElementById('previewImg');
+    const fileNameDisplay = document.getElementById('fileNameDisplay');
+
+    imageInputEl.addEventListener('change', function () {
+        const file = this.files[0];
+        if (file) {
+            fileNameDisplay.textContent = file.name;
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                previewImg.src = e.target.result;
+                uploadPlaceholder.style.display = 'none';
+                imagePreviewWrap.style.display = 'flex';
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // Счетчик символов текста
+    const textArea = document.getElementById('text');
+    const charCount = document.getElementById('charCount');
+    textArea.addEventListener('input', () => {
+        charCount.textContent = `${textArea.value.length} симв.`;
+    });
+
+    // Логика отправки формы на бэкенд /generate
+    const form = document.getElementById('animationForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const statusText = document.getElementById('statusText');
+    const resultBox = document.getElementById('resultBox');
+    const idleState = document.getElementById('idleState');
+    const loaderState = document.getElementById('loaderState');
+    const outputVideo = document.getElementById('outputVideo');
+    const downloadBtn = document.getElementById('downloadBtn');
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const imageInput = imageInputEl.files[0];
+        const textInput = textArea.value;
+
+        const formData = new FormData();
+        formData.append('image', imageInput);
+        formData.append('text', textInput);
+
+        submitBtn.disabled = true;
+        statusText.className = 'status-bar';
+        statusText.innerText = '⏳ Генерация аудио и работа нейросети...';
+
+        idleState.style.display = 'none';
+        resultBox.style.display = 'none';
+        loaderState.style.display = 'flex';
+
+        try {
+            const response = await fetch('/generate', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                statusText.className = 'status-bar success';
+                statusText.innerText = '✨ Успешно сгенерировано! Видео готово к просмотру.';
+
+                const videoSrc = data.video_url + '?t=' + new Date().getTime();
+                outputVideo.src = videoSrc;
+                downloadBtn.href = data.video_url;
+                outputVideo.load();
+
+                loaderState.style.display = 'none';
+                resultBox.style.display = 'block';
+                resultBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+                outputVideo.play().catch(() => {
+                    console.log("Автовоспроизведение заблокировано браузером.");
+                });
+            } else {
+                loaderState.style.display = 'none';
+                idleState.style.display = 'block';
+                statusText.className = 'status-bar error';
+                statusText.innerText = '❌ Ошибка: ' + (data.error || 'Не удалось сгенерировать');
+            }
+        } catch (error) {
+            loaderState.style.display = 'none';
+            idleState.style.display = 'block';
+            statusText.className = 'status-bar error';
+            statusText.innerText = '❌ Ошибка соединения с сервером.';
+        } finally {
+            submitBtn.disabled = false;
+        }
+    });
+</script>
+
+</body>
+</html>
